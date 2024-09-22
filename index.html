@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Validator and API Caller</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 3rem;
+        }
+        .filter-checkboxes {
+            margin-top: 1rem;
+        }
+        .filter-checkboxes .form-check {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">JSON Validator and API Caller</h1>
+
+        <div class="card">
+            <div class="card-body">
+                <form id="jsonForm">
+                    <div class="mb-3">
+                        <label for="jsonInput" class="form-label">Enter JSON:</label>
+                        <input type="text" id="jsonInput" class="form-control" placeholder='{ "data": ["A", "C", "z"] }'>
+                        <div id="errorMessage" class="text-danger mt-2"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Filter checkboxes will appear after JSON validation -->
+        <div class="card filter-checkboxes mt-4" id="filterSection" style="display: none;">
+            <div class="card-body">
+                <h5>Select Filters:</h5>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="filterAlphabets" value="alphabets">
+                    <label class="form-check-label" for="filterAlphabets">
+                        Alphabets
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="filterNumbers" value="numbers">
+                    <label class="form-check-label" for="filterNumbers">
+                        Numbers
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="filterHighestAlphabet" value="highest-alphabet">
+                    <label class="form-check-label" for="filterHighestAlphabet">
+                        Highest Alphabet
+                    </label>
+                </div>
+                <button id="filterApply" class="btn btn-success mt-3">Apply Filters</button>
+            </div>
+        </div>
+
+        <div id="responseContent" class="mt-4"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const jsonForm = document.getElementById('jsonForm');
+            const jsonInput = document.getElementById('jsonInput');
+            const errorMessage = document.getElementById('errorMessage');
+            const filterSection = document.getElementById('filterSection');
+            const filterApplyButton = document.getElementById('filterApply');
+            const responseContent = document.getElementById('responseContent');
+
+            // Handle form submission
+            jsonForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                errorMessage.textContent = '';
+                responseContent.innerHTML = '';
+
+                try {
+                    // Validate JSON input
+                    const jsonData = JSON.parse(jsonInput.value);
+                    if (!jsonData.data || !Array.isArray(jsonData.data)) {
+                        throw new Error('JSON must contain a "data" key with an array of characters.');
+                    }
+
+                    // Show filter section after successful validation
+                    filterSection.style.display = 'block';
+                } catch (error) {
+                    errorMessage.textContent = `Invalid JSON: ${error.message}`;
+                }
+            });
+
+            // Handle filter application
+            filterApplyButton.addEventListener('click', async () => {
+                const selectedFilters = Array.from(document.querySelectorAll('.filter-checkboxes input:checked')).map(input => input.value);
+
+                try {
+                    const jsonData = JSON.parse(jsonInput.value);
+                    const response = await fetch('http://localhost:3000/bfhl', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            full_name: "John Doe",  // Example full name
+                            dob: "1999-09-17",      // Example date of birth
+                            email: "johndoe@college.edu",  // Example email
+                            roll_number: "123456",   // Example roll number
+                            data: jsonData.data
+                        }),
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        displayResponse(result);
+                    } else {
+                        throw new Error(result.error || 'Error fetching data from API.');
+                    }
+                } catch (error) {
+                    errorMessage.textContent = `Error: ${error.message}`;
+                }
+            });
+
+            // Display API response based on selected filters
+            function displayResponse(result) {
+                responseContent.innerHTML = '';  // Clear previous content
+
+                const selectedFilters = Array.from(document.querySelectorAll('.filter-checkboxes input:checked')).map(input => input.value);
+
+                if (selectedFilters.includes('alphabets') && result.alphabets) {
+                    const alphabetsParagraph = document.createElement('p');
+                    alphabetsParagraph.textContent = 'Alphabets: ' + result.alphabets.join(', ');
+                    responseContent.appendChild(alphabetsParagraph);
+                }
+
+                if (selectedFilters.includes('numbers') && result.numbers) {
+                    const numbersParagraph = document.createElement('p');
+                    numbersParagraph.textContent = 'Numbers: ' + result.numbers.join(', ');
+                    responseContent.appendChild(numbersParagraph);
+                }
+
+                if (selectedFilters.includes('highest-alphabet') && result['highest_alphabet']) {
+                    const highestAlphabetParagraph = document.createElement('p');
+                    highestAlphabetParagraph.textContent = 'Highest Alphabet: ' + result['highest_alphabet'];
+                    responseContent.appendChild(highestAlphabetParagraph);
+                }
+
+                // If no filters are selected, show appropriate message
+                if (selectedFilters.length === 0) {
+                    responseContent.innerHTML = 'No filters selected.';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
